@@ -1,6 +1,6 @@
 {
 	"name": "obsidian-alt-plugin-manager",
-	"version": "0.1.0",
+	"version": "1.0.0",
 	"description": "Obsidian Alt Plugin Manager",
 	"main": "main.js",
 	"scripts": {
