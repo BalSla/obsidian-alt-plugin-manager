@@ -1,4 +1,4 @@
-import { App, Editor, MarkdownView, Modal, Notice, Plugin, PluginSettingTab, requestUrl, Setting } from 'obsidian';
+import { App, Editor, MarkdownView, Modal, Notice, Plugin, PluginSettingTab, requestUrl, Setting, TFile } from 'obsidian';
 import { checkSinglePluginForUpdate, ManagedPlugin } from './src/checkSinglePluginForUpdate';
 // Remember to rename these classes and interfaces!
 
@@ -42,64 +42,79 @@ export default class AltPluginManager extends Plugin {
 
 	onunload() { }
 
-	   async checkForUpdates() {
-		   // Create status bar item
-		   // @ts-ignore
-		   const statusBar = this.addStatusBarItem();
-		   statusBar.setText('Checking for plugin updates...');
-		   try {
-			   for (const plugin of this.settings.plugins) {
-				   statusBar.setText(`Checking: ${plugin.name}`);
-				   const updateInfo = await checkSinglePluginForUpdate(
-					   plugin,
-					   fetch,
-					   (msg: string) => new Notice(msg)
-				   );
-				   if (updateInfo && updateInfo.updateAvailable && this.settings.autoInstall) {
-					   statusBar.setText(`Updating: ${plugin.name}`);
-					   await this.installPluginUpdate(plugin, updateInfo);
-				   } else if (updateInfo && updateInfo.updateAvailable) {
-					   new Notice(`Update available for ${plugin.name}: ${updateInfo.latestVersion}`);
-				   }
-			   }
-			   statusBar.setText('Plugin update check complete');
-		   } catch (e) {
-			   statusBar.setText('Error during update check');
-		   }
-		   // Dispose status bar after short delay
-		   setTimeout(() => statusBar.remove(), 2000);
-	   }
+	async checkForUpdates() {
+		// Create status bar item
+		// @ts-ignore
+		if (this._statusBar) this._statusBar.remove();
+		// @ts-ignore
+		this._statusBar = this.addStatusBarItem();
+		const statusBar = this._statusBar;
+		statusBar.setText('Checking for plugin updates...');
+		try {
+			for (const plugin of this.settings.plugins) {
+				statusBar.setText(`Checking: ${plugin.name}`);
+				const updateInfo = await checkSinglePluginForUpdate(
+					plugin,
+					fetch,
+					(msg: string) => new Notice(msg)
+				);
+				if (updateInfo && updateInfo.updateAvailable && this.settings.autoInstall) {
+					statusBar.setText(`Updating: ${plugin.name}`);
+					await this.installPluginUpdate(plugin, updateInfo, statusBar);
+				} else if (updateInfo && updateInfo.updateAvailable) {
+					statusBar.setText(`Update available: ${plugin.name}`);
+					new Notice(`Update available for ${plugin.name}: ${updateInfo.latestVersion}`);
+				}
+			}
+			statusBar.setText('Plugin update check complete');
+		} catch (e) {
+			statusBar.setText('Error during update check');
+		}
+		// Dispose status bar after short delay
+		setTimeout(() => {
+			statusBar.remove();
+			this._statusBar = null;
+		}, 2000);
+	}
 
 
 
-	   /**
-		* Installs the update for a plugin using the provided update info.
-		*/
-	   async installPluginUpdate(plugin: ManagedPlugin, updateInfo: { latestVersion: string; assets: Record<string, string>; updateAvailable: boolean; }) {
-		   try {
-			   const requiredFiles = ['main.js', 'styles.css', 'manifest.json'];
-			   const pluginFolder = this.getPluginFolderPath(plugin.name);
-			   // @ts-ignore
-			   await this.app.vault.adapter.mkdir(pluginFolder).catch(() => { }); // ensure folder exists
-			   for (const file of requiredFiles) {
-				   const fileContent = await nonCorsGetHtml(updateInfo.assets[file]);
-				   if (!fileContent) {
-					   new Notice(`Failed to download ${file} for ${plugin.name}`);
-					   continue;
-				   }
-				   // Convert string to ArrayBuffer for binary write
-				   const encoder = new TextEncoder();
-				   const data = encoder.encode(fileContent);
-				   // @ts-ignore
-				   await this.app.vault.adapter.writeBinary(`${pluginFolder}/${file}`, data);
-			   }
-			   new Notice(`Updated ${plugin.name} to ${updateInfo.latestVersion}`);
-			   plugin.latestVersion = updateInfo.latestVersion;
-			   await this.saveSettings();
-		   } catch (e) {
-			   new Notice(`Error installing update for ${plugin.name}: ${e}`);
-		   }
-	   }
+	/**
+	 * Installs the update for a plugin using the provided update info.
+	 * Optionally updates the status bar if provided.
+	 */
+	async installPluginUpdate(
+		plugin: ManagedPlugin,
+		updateInfo: { latestVersion: string; assets: Record<string, string>; updateAvailable: boolean; },
+		statusBar?: HTMLElement
+	) {
+		try {
+			const requiredFiles = ['main.js', 'styles.css', 'manifest.json'];
+			const pluginFolder = this.getPluginFolderPath(plugin.name);
+			// @ts-ignore
+			await this.app.vault.adapter.mkdir(pluginFolder).catch(() => { }); // ensure folder exists
+			for (const file of requiredFiles) {
+				if (statusBar) statusBar.setText(`Downloading: ${plugin.name}/${file}`);
+				const fileContent = await nonCorsGetHtml(updateInfo.assets[file]);
+				if (!fileContent) {
+					new Notice(`Failed to download ${file} for ${plugin.name}`);
+					if (statusBar) statusBar.setText(`Failed: ${plugin.name}/${file}`);
+					continue;
+				}
+				// Convert string to ArrayBuffer for binary write
+				await window.require('fs').promises.writeFile(`${pluginFolder}/${file}`, fileContent, 'utf8');
+			}
+			if (statusBar) statusBar.setText(`Updated: ${plugin.name} to ${updateInfo.latestVersion}`);
+			new Notice(`Updated ${plugin.name} to ${updateInfo.latestVersion}\nPlease reload Plugin manually!`,0);
+			plugin.latestVersion = updateInfo.latestVersion;
+			await this.saveSettings();
+		} catch (e) {
+			if (statusBar) statusBar.setText(`Error updating: ${plugin.name}`);
+			new Notice(`Error installing update for ${plugin.name}: ${e}`);
+		}
+	}
+	// Track the current status bar item
+	private _statusBar: HTMLElement | null = null;
 
 	async loadSettings() {
 		this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
@@ -160,13 +175,13 @@ class AltPluginManagerSettingTab extends PluginSettingTab {
 					await this.plugin.saveSettings();
 					this.display();
 				}));
-			   setting.addExtraButton(btn => btn.setIcon('refresh-ccw').setTooltip('Check now').onClick(async () => {
-				   await checkSinglePluginForUpdate(
-					   p,
-					   fetch,
-					   (msg) => new Notice(msg)
-				   );
-			   }));
+			setting.addExtraButton(btn => btn.setIcon('refresh-ccw').setTooltip('Check now').onClick(async () => {
+				await checkSinglePluginForUpdate(
+					p,
+					fetch,
+					(msg) => new Notice(msg)
+				);
+			}));
 		});
 
 		new Setting(containerEl)
@@ -209,8 +224,7 @@ class AltPluginManagerSettingTab extends PluginSettingTab {
 	private _newToken = '';
 }
 
-export async function nonCorsGetHtml(url: string): Promise<string|null> {
-	console.log("Fetching URL:", url);
+export async function nonCorsGetHtml(url: string): Promise<string | null> {
 	try {
 		return await requestUrl(url).text;
 	}
