@@ -1,7 +1,7 @@
 {
 	"name": "obsidian-alt-plugin-manager",
 	"version": "1.0.0",
-	"description": "Obsidian Alt Plugin Manager",
+	"description": "Alt Plugin Manager",
 	"main": "main.js",
 	"scripts": {
 		"dev": "node esbuild.config.mjs",
