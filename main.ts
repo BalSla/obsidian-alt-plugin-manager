@@ -1,6 +1,14 @@
 import { App, Modal, Notice, Plugin, PluginSettingTab, requestUrl, Setting} from 'obsidian';
-import { checkSinglePluginForUpdate, ManagedPlugin } from './src/checkSinglePluginForUpdate';
+import { checkSinglePluginForUpdate } from './src/checkSinglePluginForUpdate';
 // Remember to rename these classes and interfaces!
+
+interface ManagedPlugin {
+	name: string;
+	repoUrl: string;
+	pluginFolder: string;
+	latestVersion?: string;
+	githubToken?: string;
+}
 
 
 
@@ -87,13 +95,11 @@ export default class AltPluginManager extends Plugin {
 		statusBar?: HTMLElement
 	) {
 		try {
-			const requiredFiles = ['main.js', 'styles.css', 'manifest.json'];
-			const pluginFolder = this.getPluginFolderPath(plugin.name);
+			const pluginFolder = plugin.pluginFolder || this.getPluginFolderPath(plugin.name);
 			// @ts-ignore
 			await this.app.vault.adapter.mkdir(pluginFolder).catch(() => { }); // ensure folder exists
-			for (const file of requiredFiles) {
+			for (const [file, assetId] of Object.entries(updateInfo.assets)) {
 				if (statusBar) statusBar.setText(`Downloading: ${plugin.name}/${file}`);
-				const assetId = updateInfo.assets[file];
 				if (!assetId) {
 					console.error(`Asset ID not found for ${file} in ${plugin.name}`);
 					if (statusBar) statusBar.setText(`Failed: ${plugin.name}/${file}`);
@@ -111,7 +117,10 @@ export default class AltPluginManager extends Plugin {
 				}
 				// Convert string to ArrayBuffer for binary write
 				// Detailed tracing and robust error handling for file writing
-				const targetPath = `${pluginFolder}/${file}`;
+				// Compose targetPath from vault base path and plugin folder
+				// @ts-ignore
+				const vaultBase = this.app.vault.adapter.basePath || '';
+				const targetPath = `${vaultBase}/${pluginFolder}/${file}`;
 				console.log(`[TRACE] Preparing to write file: ${targetPath}`);
 				console.log(`[TRACE] Data size: ${typeof fileContent === 'string' ? fileContent.length : Buffer.byteLength(fileContent)} bytes`);
 				try {
@@ -191,6 +200,10 @@ class AltPluginManagerSettingTab extends PluginSettingTab {
 			const setting = new Setting(containerEl)
 				.setName(p.name || p.repoUrl)
 				.setDesc(`Latest: ${p.latestVersion || 'unknown'} | ${p.repoUrl}`)
+				.addText(text => text.setPlaceholder('Plugin folder').setValue(p.pluginFolder || '').onChange(async val => {
+					p.pluginFolder = val;
+					await this.plugin.saveSettings();
+				}))
 				.addButton(btn => btn.setButtonText('Delete').setCta().onClick(async () => {
 					this.plugin.settings.plugins.splice(idx, 1);
 					await this.plugin.saveSettings();
@@ -210,13 +223,14 @@ class AltPluginManagerSettingTab extends PluginSettingTab {
 			.setDesc('Add a new plugin by repository URL')
 			.addText(text => text.setPlaceholder('Plugin name').onChange(val => (this._newName = val)))
 			.addText(text => text.setPlaceholder('Repository URL').onChange(val => (this._newRepo = val)))
+			.addText(text => text.setPlaceholder('Plugin folder').onChange(val => (this._newFolder = val)))
 			.addText(text => text.setPlaceholder('GitHub Token (optional)').onChange(val => (this._newToken = val)))
 			.addButton(btn => btn.setButtonText('Add').setCta().onClick(async () => {
-				if (!this._newName || !this._newRepo) {
-					new Notice('Name and repository URL required');
+				if (!this._newName || !this._newRepo || !this._newFolder) {
+					new Notice('Name, repository URL, and plugin folder required');
 					return;
 				}
-				this.plugin.settings.plugins.push({ name: this._newName, repoUrl: this._newRepo, githubToken: this._newToken });
+				this.plugin.settings.plugins.push({ name: this._newName, repoUrl: this._newRepo, pluginFolder: this._newFolder, githubToken: this._newToken });
 				await this.plugin.saveSettings();
 				this.display();
 			}));
@@ -242,6 +256,7 @@ class AltPluginManagerSettingTab extends PluginSettingTab {
 	}
 	private _newName = '';
 	private _newRepo = '';
+	private _newFolder = '';
 	private _newToken = '';
 }
 
