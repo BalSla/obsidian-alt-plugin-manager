@@ -15,7 +15,7 @@ export async function checkSinglePluginForUpdate(
     noticeFn: (msg: string) => void
 ): Promise<null | {
     latestVersion: string;
-    assets: Record<string, string>;
+    assets: Record<string, number>;
     updateAvailable: boolean;
 }> {
     try {
@@ -35,23 +35,24 @@ export async function checkSinglePluginForUpdate(
         const releaseRes = await fetchFn(`${apiBase}/releases/latest`, { headers });
         if (!releaseRes.ok) {
             console.error(`Failed to fetch release for ${plugin.name}: ${releaseRes.status} ${releaseRes.statusText}`);
-            noticeFn(`Failed to fetch release for ${plugin.name}`);
             return null;
         }
         const release = await releaseRes.json();
         const latestVersion = release.tag_name || release.name;
         if (plugin.latestVersion === latestVersion) return { latestVersion, assets: {}, updateAvailable: false };
 
-        // Find required assets
-        const requiredFiles = ['main.js', 'styles.css', 'manifest.json'];
-        const assets: Record<string, string> = {};
-        for (const asset of release.assets) {
-            if (requiredFiles.includes(asset.name)) {
-                assets[asset.name] = asset.browser_download_url;
+        // Collect all asset IDs from the release
+        const assets: Record<string, number> = {};
+        if (Array.isArray(release.assets)) {
+            for (const asset of release.assets) {
+                if (asset.name && typeof asset.id === 'number') {
+                    assets[asset.name] = asset.id;
+                }
             }
         }
-        if (!requiredFiles.every(f => assets[f])) {
-            noticeFn(`Release for ${plugin.name} missing required files.`);
+        if (Object.keys(assets).length === 0) {
+            console.warn(`No assets found for release of ${plugin.name}`);
+            noticeFn(`Release for ${plugin.name} has no downloadable assets.`);
             return null;
         }
 

@@ -1,4 +1,4 @@
-import { App, Editor, MarkdownView, Modal, Notice, Plugin, PluginSettingTab, requestUrl, Setting, TFile } from 'obsidian';
+import { App, Modal, Notice, Plugin, PluginSettingTab, requestUrl, Setting} from 'obsidian';
 import { checkSinglePluginForUpdate, ManagedPlugin } from './src/checkSinglePluginForUpdate';
 // Remember to rename these classes and interfaces!
 
@@ -26,7 +26,6 @@ export default class AltPluginManager extends Plugin {
 
 		// Add ribbon icon for manual update check
 		this.addRibbonIcon('refresh-ccw', 'Check for plugin updates', async () => {
-			new Notice('Checking for plugin updates...');
 			await this.checkForUpdates();
 		});
 
@@ -63,7 +62,6 @@ export default class AltPluginManager extends Plugin {
 					await this.installPluginUpdate(plugin, updateInfo, statusBar);
 				} else if (updateInfo && updateInfo.updateAvailable) {
 					statusBar.setText(`Update available: ${plugin.name}`);
-					new Notice(`Update available for ${plugin.name}: ${updateInfo.latestVersion}`);
 				}
 			}
 			statusBar.setText('Plugin update check complete');
@@ -85,7 +83,7 @@ export default class AltPluginManager extends Plugin {
 	 */
 	async installPluginUpdate(
 		plugin: ManagedPlugin,
-		updateInfo: { latestVersion: string; assets: Record<string, string>; updateAvailable: boolean; },
+		updateInfo: { latestVersion: string; assets: Record<string, number>; updateAvailable: boolean; },
 		statusBar?: HTMLElement
 	) {
 		try {
@@ -95,14 +93,37 @@ export default class AltPluginManager extends Plugin {
 			await this.app.vault.adapter.mkdir(pluginFolder).catch(() => { }); // ensure folder exists
 			for (const file of requiredFiles) {
 				if (statusBar) statusBar.setText(`Downloading: ${plugin.name}/${file}`);
-				const fileContent = await nonCorsGetHtml(updateInfo.assets[file]);
+				const assetId = updateInfo.assets[file];
+				if (!assetId) {
+					console.error(`Asset ID not found for ${file} in ${plugin.name}`);
+					if (statusBar) statusBar.setText(`Failed: ${plugin.name}/${file}`);
+					continue;
+				}
+				const fileContent = await fetchGitHubReleaseAsset(
+					plugin.repoUrl,
+					assetId,
+					plugin.githubToken
+				);
 				if (!fileContent) {
-					new Notice(`Failed to download ${file} for ${plugin.name}`);
+					console.error(`Failed to download ${file} for ${plugin.name}`);
 					if (statusBar) statusBar.setText(`Failed: ${plugin.name}/${file}`);
 					continue;
 				}
 				// Convert string to ArrayBuffer for binary write
-				await window.require('fs').promises.writeFile(`${pluginFolder}/${file}`, fileContent, 'utf8');
+				// Detailed tracing and robust error handling for file writing
+				const targetPath = `${pluginFolder}/${file}`;
+				console.log(`[TRACE] Preparing to write file: ${targetPath}`);
+				console.log(`[TRACE] Data size: ${typeof fileContent === 'string' ? fileContent.length : Buffer.byteLength(fileContent)} bytes`);
+				try {
+					await window.require('fs').promises.writeFile(targetPath, fileContent, 'utf8');
+					console.log(`[TRACE] Successfully wrote file: ${targetPath}`);
+				} catch (err) {
+					console.error(`[ERROR] Failed to write file: ${targetPath}`);
+					console.error(`[ERROR] Details:`, err);
+					new Notice(`Error writing file ${file} for ${plugin.name}: ${err}`);
+					if (statusBar) statusBar.setText(`Error writing: ${plugin.name}/${file}`);
+					throw err;
+				}
 			}
 			if (statusBar) statusBar.setText(`Updated: ${plugin.name} to ${updateInfo.latestVersion}`);
 			new Notice(`Updated ${plugin.name} to ${updateInfo.latestVersion}\nPlease reload Plugin manually!`,0);
@@ -224,11 +245,39 @@ class AltPluginManagerSettingTab extends PluginSettingTab {
 	private _newToken = '';
 }
 
-export async function nonCorsGetHtml(url: string): Promise<string | null> {
-	try {
-		return await requestUrl(url).text;
+/**
+ * Fetches HTML/text from a URL, optionally using GitHub authorization if token is provided.
+ * @param url The URL to fetch
+ * @param githubToken Optional GitHub token for Authorization header
+ */
+/**
+ * Downloads a release asset by its ID from a private GitHub repo using the API.
+ * @param repoUrl The repository URL
+ * @param assetId The asset ID
+ * @param githubToken Optional GitHub token for Authorization header
+ */
+export async function fetchGitHubReleaseAsset(repoUrl: string, assetId: number, githubToken?: string): Promise<string | null> {
+	const match = repoUrl.match(/github.com[/:]([^/]+)\/([^/]+)(?:.git)?/i);
+	if (!match) {
+		console.error(`Invalid repoUrl: ${repoUrl}`);
+		return null;
 	}
-	catch (error) {
+	const owner = match[1];
+	const repo = match[2].replace(/\.git$/, '');
+	const url = `https://api.github.com/repos/${owner}/${repo}/releases/assets/${assetId}`;
+	console.debug(`[TRACE] Downloading asset from: ${url}`);
+	try {
+		const options: any = {
+			method: 'GET',
+			headers: {
+				'Authorization': githubToken ? `Bearer ${githubToken}` : '',
+				'Accept': 'application/octet-stream',
+				'User-Agent': 'Obsidian-Alt-Plugin-Manager',
+			}
+		};
+		const response = await requestUrl({ url, ...options });
+		return response.text;
+	} catch (error) {
 		console.error(error);
 		return null;
 	}
