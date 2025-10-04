@@ -1,11 +1,11 @@
 {
-	"id": "obsidian-alt-plugin-manager",
-	"name": "Alt Plugin Manager",
-	"version": "1.0.0",
-	"minAppVersion": "0.15.0",
-	"description": "Enables updating a custom list of Obsidian plugins from specified sources, including GitHub and access-protected repositories, even if they are not registered in the official Obsidian Plugin list.",
-	"author": "Obsidian",
-	"authorUrl": "https://github.com/BalSla",
-	"fundingUrl": "https://github.com/BalSla/obsidian-alt-plugin-manager",
-	"isDesktopOnly": true
+  "id": "obsidian-alt-plugin-manager",
+  "name": "Alt Plugin Manager",
+  "version": "1.0.1",
+  "minAppVersion": "0.15.0",
+  "description": "Enables updating a custom list of Obsidian plugins from specified sources, including GitHub and access-protected repositories, even if they are not registered in the official Obsidian Plugin list.",
+  "author": "Obsidian",
+  "authorUrl": "https://github.com/BalSla",
+  "fundingUrl": "https://github.com/BalSla/obsidian-alt-plugin-manager",
+  "isDesktopOnly": true
 }

@@ -1,4 +1,4 @@
-import { App, Modal, Notice, Plugin, PluginSettingTab, requestUrl, Setting} from 'obsidian';
+import { App,  Notice, Plugin, PluginSettingTab, requestUrl, Setting} from 'obsidian';
 import { checkSinglePluginForUpdate } from './src/checkSinglePluginForUpdate';
 // Remember to rename these classes and interfaces!
 
@@ -10,15 +10,11 @@ interface ManagedPlugin {
 	githubToken?: string;
 }
 
-
-
-
 interface AltPluginManagerSettings {
 	plugins: ManagedPlugin[];
 	checkPeriodMinutes: number;
 	autoInstall: boolean;
 }
-
 
 const DEFAULT_SETTINGS: AltPluginManagerSettings = {
 	plugins: [],
@@ -82,8 +78,6 @@ export default class AltPluginManager extends Plugin {
 			this._statusBar = null;
 		}, 2000);
 	}
-
-
 
 	/**
 	 * Installs the update for a plugin using the provided update info.
@@ -164,23 +158,6 @@ export default class AltPluginManager extends Plugin {
 		return `${base}/.obsidian/plugins/${pluginName}`;
 	}
 }
-
-class SampleModal extends Modal {
-	constructor(app: App) {
-		super(app);
-	}
-
-	onOpen() {
-		const { contentEl } = this;
-		contentEl.setText('Woah!');
-	}
-
-	onClose() {
-		const { contentEl } = this;
-		contentEl.empty();
-	}
-}
-
 
 class AltPluginManagerSettingTab extends PluginSettingTab {
 	plugin: AltPluginManager;
