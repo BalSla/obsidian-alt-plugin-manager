@@ -1,5 +1,6 @@
 import { App,  Notice, Plugin, PluginSettingTab, requestUrl, Setting} from 'obsidian';
 import { checkSinglePluginForUpdate } from './src/checkSinglePluginForUpdate';
+import * as path from 'path';
 // Remember to rename these classes and interfaces!
 
 interface ManagedPlugin {
@@ -89,7 +90,7 @@ export default class AltPluginManager extends Plugin {
 		statusBar?: HTMLElement
 	) {
 		try {
-			const pluginFolder = plugin.pluginFolder || this.getPluginFolderPath(plugin.name);
+			const pluginFolder = path.join('.obsidian/plugins', plugin.pluginFolder);
 			// @ts-ignore
 			await this.app.vault.adapter.mkdir(pluginFolder).catch(() => { }); // ensure folder exists
 			for (const [file, assetId] of Object.entries(updateInfo.assets)) {
@@ -146,16 +147,6 @@ export default class AltPluginManager extends Plugin {
 
 	async saveSettings() {
 		await this.saveData(this.settings);
-	}
-
-	/**
-	 * Get the plugin folder path in the vault for a given plugin name.
-	 * This assumes the folder is in .obsidian/plugins/{pluginName}
-	 */
-	getPluginFolderPath(pluginName: string): string {
-		// @ts-ignore
-		const base = this.app.vault.adapter.basePath || '';
-		return `${base}/.obsidian/plugins/${pluginName}`;
 	}
 }
 
