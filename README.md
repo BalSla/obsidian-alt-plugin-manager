@@ -1,26 +1,37 @@
 > [!info] A plugin that enables updating a custom list of Obsidian plugins from specified sources, including GitHub and access-protected repositories, even if they are not registered in the official Obsidian Plugin list.
 
-## Requirements
+## Features
 
-### Functional requirements
+- 🔄 **Automatic & Manual Updates** - Check for updates automatically on startup, periodically, or manually via the ribbon icon
+- 🔐 **Private Repository Support** - Use GitHub fine-grained personal access tokens to access private repositories
+- 📋 **Easy Plugin Management** - Add, delete, and monitor multiple plugins in a clean, organized settings interface
+- ⚙️ **Flexible Configuration** - Customize check period, enable auto-install, and set GitHub tokens per plugin
+- 📦 **Release Expectations** - Works with standard GitHub releases containing `main.js`, `manifest.json`, and `styles.css`
 
-- Delayed call to `check for update` on start
-- Periodical call `check for update`
-	- Period setting
-	- Automatically/manually install updates
-	- Release expects 3 files:
-		- main.js
-		- styles.css
-		- manifest.json
-- In Plugin settings implement 'Add/Delete plugin'
-- For each plugin store 
-	- Repository (url) to check
-	- Display latest version
-	- GitHub App Token
-### Non functional requirements
+## Usage
 
-- GitHub
-- Private repositories
+### Adding a Plugin
+
+1. Open the plugin settings
+2. In the **"Add New Plugin"** section at the top, fill in:
+   - **Plugin name** - Display name for the plugin
+   - **Repository URL** - GitHub repository URL (e.g., `https://github.com/owner/repo`)
+   - **Plugin folder** - Folder name where the plugin should be installed (e.g., `my-plugin`)
+   - **GitHub Token** (optional) - For private repositories only
+3. Click **"Add Plugin"** to start tracking it
+
+### Managing Plugins
+
+- View all tracked plugins in the **"Managed Plugins"** section
+- See the latest available version for each plugin
+- **Refresh icon** - Check for updates immediately
+- **Delete button** - Stop tracking a plugin
+- **Plugin folder input** - Modify where the plugin should be installed
+
+### Settings
+
+- **Check period (minutes)** - How often to check for updates (default: 60 minutes)
+- **Auto-install updates** - Automatically install updates when found (default: disabled)
 ## Fine-grained personal access tokens for Private Repositories
 
 To allow this plugin to access private GitHub repositories, you need to create a Fine-grained personal access token (PAT) with the correct permissions. Follow these steps:
@@ -34,7 +45,6 @@ To allow this plugin to access private GitHub repositories, you need to create a
 7. In the plugin settings, paste this token in the GitHub Token field for the relevant plugin.
 
 **Note:** Keep your token secure. Do not share it or commit it to public repositories.
-
 ## Automating GitHub Releases
 
 To automate the release process for your Obsidian plugin, you can use GitHub Actions to build your project and create a release with the required artifacts (`main.js`, `manifest.json`, `styles.css`).

@@ -6,3 +6,121 @@ available in the app when your plugin is enabled.
 If your plugin does not need CSS, delete this file.
 
 */
+
+/* Add plugin section - prominent and separated */
+.alt-pm-add-section {
+	background-color: var(--background-secondary-alt);
+	border: 2px solid var(--interactive-accent);
+	border-radius: 6px;
+	padding: 16px;
+	margin-bottom: 32px;
+	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.alt-pm-add-form {
+	display: flex;
+	flex-direction: column;
+	gap: 12px;
+	margin-bottom: 12px;
+}
+
+.alt-pm-form-input {
+	width: 100%;
+	padding: 8px 12px;
+	border: 1px solid var(--divider-color);
+	border-radius: 4px;
+	background-color: var(--background-primary);
+	color: var(--text-normal);
+	font-family: inherit;
+	font-size: 0.95em;
+	box-sizing: border-box;
+	transition: border-color 0.2s;
+}
+
+.alt-pm-form-input:focus {
+	outline: none;
+	border-color: var(--interactive-accent);
+	box-shadow: 0 0 0 2px rgba(var(--interactive-accent-rgb), 0.1);
+}
+
+.alt-pm-form-input::placeholder {
+	color: var(--text-muted);
+}
+
+.alt-pm-button-container {
+	display: flex;
+	justify-content: flex-end;
+	gap: 8px;
+}
+
+.alt-pm-add-button {
+	padding: 8px 16px;
+	border: none;
+	border-radius: 4px;
+	background-color: var(--interactive-accent);
+	color: var(--text-on-accent);
+	font-weight: 600;
+	cursor: pointer;
+	transition: background-color 0.2s;
+}
+
+.alt-pm-add-button:hover {
+	background-color: var(--interactive-accent-hover);
+}
+
+.alt-pm-add-button:active {
+	background-color: var(--interactive-accent-active);
+}
+
+/* Managed plugins list */
+.alt-pm-plugins-list {
+	display: flex;
+	flex-direction: column;
+	gap: 12px;
+}
+
+.alt-pm-plugin-item {
+	background-color: var(--background-secondary);
+	border: 1px solid var(--divider-color);
+	border-radius: 4px;
+	padding: 12px;
+	margin-bottom: 8px;
+}
+
+.alt-pm-plugin-header {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	margin-bottom: 8px;
+	word-break: break-all;
+}
+
+.alt-pm-plugin-header strong {
+	font-size: 1.1em;
+	color: var(--text-normal);
+	flex-shrink: 0;
+}
+
+.alt-pm-plugin-header code {
+	font-size: 0.85em;
+	color: var(--text-muted);
+	background-color: var(--background-primary);
+	padding: 2px 6px;
+	border-radius: 2px;
+	overflow-x: auto;
+	flex-grow: 1;
+}
+
+.alt-pm-plugin-status {
+	font-size: 0.9em;
+	color: var(--text-muted);
+	margin-bottom: 12px;
+	padding: 6px 0;
+}
+
+.alt-pm-plugin-status strong {
+	color: var(--text-normal);
+	font-weight: 600;
+}
+
+

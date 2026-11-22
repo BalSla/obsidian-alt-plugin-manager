@@ -162,47 +162,119 @@ class AltPluginManagerSettingTab extends PluginSettingTab {
 		const { containerEl } = this;
 		containerEl.empty();
 
+		// Managed Plugins Section
 		containerEl.createEl('h2', { text: 'Managed Plugins' });
-
-		this.plugin.settings.plugins.forEach((p, idx) => {
-			const setting = new Setting(containerEl)
-				.setName(p.name || p.repoUrl)
-				.setDesc(`Latest: ${p.latestVersion || 'unknown'} | ${p.repoUrl}`)
-				.addText(text => text.setPlaceholder('Plugin folder').setValue(p.pluginFolder || '').onChange(async val => {
-					p.pluginFolder = val;
-					await this.plugin.saveSettings();
-				}))
-				.addButton(btn => btn.setButtonText('Delete').setCta().onClick(async () => {
-					this.plugin.settings.plugins.splice(idx, 1);
-					await this.plugin.saveSettings();
-					this.display();
-				}));
-			setting.addExtraButton(btn => btn.setIcon('refresh-ccw').setTooltip('Check now').onClick(async () => {
-				await checkSinglePluginForUpdate(
-					p,
-					fetch,
-					(msg) => new Notice(msg)
+		
+		if (this.plugin.settings.plugins.length === 0) {
+			containerEl.createEl('p', { text: 'No plugins tracked yet. Add one below to get started.' });
+		} else {
+			const pluginsContainer = containerEl.createDiv('alt-pm-plugins-list');
+			this.plugin.settings.plugins.forEach((p, idx) => {
+				const pluginItem = pluginsContainer.createDiv('alt-pm-plugin-item');
+				
+				const headerDiv = pluginItem.createDiv('alt-pm-plugin-header');
+				headerDiv.createEl('strong', { text: p.name });
+				headerDiv.createEl('code', { text: p.repoUrl });
+				
+				const statusDiv = pluginItem.createDiv('alt-pm-plugin-status');
+				statusDiv.createSpan({ text: `Latest version: ` });
+				statusDiv.createEl('strong', { text: p.latestVersion || 'unknown' });
+				
+				const setting = new Setting(pluginItem);
+				setting.addText(text => text
+					.setPlaceholder('Plugin folder')
+					.setValue(p.pluginFolder || '')
+					.onChange(async val => {
+						p.pluginFolder = val;
+						await this.plugin.saveSettings();
+					})
 				);
-			}));
+				
+				setting.addExtraButton(btn => btn
+					.setIcon('refresh-ccw')
+					.setTooltip('Check now')
+					.onClick(async () => {
+						await checkSinglePluginForUpdate(
+							p,
+							fetch,
+							(msg) => new Notice(msg)
+						);
+					})
+				);
+				
+				setting.addButton(btn => btn
+					.setButtonText('Delete')
+					.setCta()
+					.onClick(async () => {
+						this.plugin.settings.plugins.splice(idx, 1);
+						await this.plugin.saveSettings();
+						this.display();
+					})
+				);
+			});
+		}
+
+		// Add Plugin Section
+		containerEl.createEl('h2', { text: 'Add New Plugin' });
+		const addSection = containerEl.createDiv('alt-pm-add-section');
+		
+		const formContainer = addSection.createDiv('alt-pm-add-form');
+		
+		const nameInput = formContainer.createEl('input', { type: 'text' });
+		nameInput.placeholder = 'Plugin name';
+		nameInput.className = 'alt-pm-form-input';
+		nameInput.value = this._newName;
+		nameInput.addEventListener('input', (e) => {
+			this._newName = (e.target as HTMLInputElement).value;
+		});
+		
+		const repoInput = formContainer.createEl('input', { type: 'text' });
+		repoInput.placeholder = 'Repository URL (e.g., https://github.com/owner/repo)';
+		repoInput.className = 'alt-pm-form-input';
+		repoInput.value = this._newRepo;
+		repoInput.addEventListener('input', (e) => {
+			this._newRepo = (e.target as HTMLInputElement).value;
+		});
+		
+		const folderInput = formContainer.createEl('input', { type: 'text' });
+		folderInput.placeholder = 'Plugin folder';
+		folderInput.className = 'alt-pm-form-input';
+		folderInput.value = this._newFolder;
+		folderInput.addEventListener('input', (e) => {
+			this._newFolder = (e.target as HTMLInputElement).value;
+		});
+		
+		const tokenInput = formContainer.createEl('input', { type: 'password' });
+		tokenInput.placeholder = 'GitHub Token (optional)';
+		tokenInput.className = 'alt-pm-form-input';
+		tokenInput.value = this._newToken;
+		tokenInput.addEventListener('input', (e) => {
+			this._newToken = (e.target as HTMLInputElement).value;
+		});
+		
+		const buttonContainer = addSection.createDiv('alt-pm-button-container');
+		const addButton = buttonContainer.createEl('button', { text: 'Add Plugin' });
+		addButton.className = 'mod-cta alt-pm-add-button';
+		addButton.addEventListener('click', async () => {
+			if (!this._newName || !this._newRepo || !this._newFolder) {
+				new Notice('Name, repository URL, and plugin folder required');
+				return;
+			}
+			this.plugin.settings.plugins.push({ 
+				name: this._newName, 
+				repoUrl: this._newRepo, 
+				pluginFolder: this._newFolder, 
+				githubToken: this._newToken 
+			});
+			this._newName = '';
+			this._newRepo = '';
+			this._newFolder = '';
+			this._newToken = '';
+			await this.plugin.saveSettings();
+			this.display();
 		});
 
-		new Setting(containerEl)
-			.setName('Add Plugin')
-			.setDesc('Add a new plugin by repository URL')
-			.addText(text => text.setPlaceholder('Plugin name').onChange(val => (this._newName = val)))
-			.addText(text => text.setPlaceholder('Repository URL').onChange(val => (this._newRepo = val)))
-			.addText(text => text.setPlaceholder('Plugin folder').onChange(val => (this._newFolder = val)))
-			.addText(text => text.setPlaceholder('GitHub Token (optional)').onChange(val => (this._newToken = val)))
-			.addButton(btn => btn.setButtonText('Add').setCta().onClick(async () => {
-				if (!this._newName || !this._newRepo || !this._newFolder) {
-					new Notice('Name, repository URL, and plugin folder required');
-					return;
-				}
-				this.plugin.settings.plugins.push({ name: this._newName, repoUrl: this._newRepo, pluginFolder: this._newFolder, githubToken: this._newToken });
-				await this.plugin.saveSettings();
-				this.display();
-			}));
-
+		// Settings Section
 		containerEl.createEl('h2', { text: 'Settings' });
 		new Setting(containerEl)
 			.setName('Check period (minutes)')
